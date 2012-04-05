@@ -35,8 +35,9 @@ end
 
 defmodule :cerebrate_server do
   def start_link() do
-    listen_port = 3456
-    pid = spawn :cerebrate_server, :start, [listen_port]
+    {:ok, [[listen_port]]} = Erlang.init.get_argument(:port)
+    args = [Erlang.erlang.list_to_integer(listen_port)]
+    pid = spawn :cerebrate_server, :start, args
     {:ok, pid}
   end
 

@@ -12,5 +12,5 @@ task :build_deps do
 end
 
 task :run do
-	sh "erl -pa ebin/ -pa deps/*/ebin/ -pa deps/elixir/exbin/ -s cerebrate"
+	sh "erl -pa ebin/ -pa deps/*/ebin/ -pa deps/elixir/exbin/ -s cerebrate -port 3456"
 end
