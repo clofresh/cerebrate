@@ -1,0 +1,13 @@
+{application, cerebrate, [
+	{description, "Decentralized monitoring agent"},
+	{vsn, "0.1.0"},
+	{modules, []},
+	{registered, []},
+	{applications, [
+		kernel,
+		stdlib,
+		dnssd
+	]},
+	{mod, {cerebrate, []}},
+	{env, []}
+]}.
