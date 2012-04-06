@@ -3,6 +3,7 @@ defmodule CerebrateCollector do
     {:ok, [[listen_port]]} = Erlang.init.get_argument(:port)
     args = [Erlang.erlang.list_to_integer(listen_port)]
     pid = spawn CerebrateCollector, :start, args
+    Process.register :collector, pid
     {:ok, pid}
   end
 
@@ -18,8 +19,14 @@ defmodule CerebrateCollector do
   end
 
   def run(state) do
-    IO.inspect CerebrateChecks.all()
-    :ok = Erlang.timer.sleep 1000
+    check_data = CerebrateChecks.all()
+    IO.inspect check_data
+    receive do
+    match: {:query, caller}
+      caller <- check_data
+    after: 1000
+      IO.puts "No calls after 1000ms"
+    end
     run state
   end
 end
