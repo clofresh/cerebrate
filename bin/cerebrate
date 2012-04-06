@@ -1,0 +1,8 @@
+#!/bin/bash -x
+
+CEREBRATE_HOME=$(dirname $0)/..
+erl -pa $CEREBRATE_HOME/ebin/ \
+    -pa $CEREBRATE_HOME/deps/*/ebin/ \
+    -pa $CEREBRATE_HOME/deps/elixir/exbin/ \
+    -s cerebrate \
+    $@
