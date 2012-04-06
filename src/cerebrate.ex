@@ -44,7 +44,7 @@ defmodule Cerebrate do
     end
 
     def start(listen_port) do
-      Erlang.dnssd.register "Cerebrate", "_cerebrate._udp", listen_port
+      Erlang.dnssd.register "Cerebrate-#{listen_port}", "_cerebrate._udp", listen_port
       receive do
       match: {:dnssd, ref, {:register, :add, result}} 
         IO.puts "Registered #{inspect(result)}"
