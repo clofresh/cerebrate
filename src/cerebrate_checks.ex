@@ -1,13 +1,5 @@
-defmodule CerebrateCollector do
-  def start_link() do
-    {:ok, [[listen_port]]} = Erlang.init.get_argument(:port)
-    args = [Erlang.erlang.list_to_integer(listen_port)]
-    pid = spawn CerebrateCollector, :start, args
-    Process.register :collector, pid
-    {:ok, pid}
-  end
-
-  def start(listen_port) do
+defmodule CerebrateDnssd do
+  def start_link(listen_port) do
     Erlang.dnssd.register "Cerebrate-#{listen_port}", "_cerebrate._udp", listen_port
     receive do
     match: {:dnssd, ref, {:register, :add, result}} 
@@ -15,6 +7,18 @@ defmodule CerebrateCollector do
     match: {:dnssd, ref, {:register, :remove, result}}
       IO.puts "Unexpected remove result: #{inspect(result)}"
     end
+    {:ok, Process.self()}
+  end
+end
+
+defmodule CerebrateCollector do
+  def start_link() do
+    pid = spawn_link CerebrateCollector, :start, []
+    Process.register :collector, pid
+    {:ok, pid}
+  end
+
+  def start() do
     run Erlang.dict.store(:start_time, Erlang.now(), Erlang.dict.new())
   end
 

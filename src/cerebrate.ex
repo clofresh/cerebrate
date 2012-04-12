@@ -16,7 +16,9 @@ defmodule :cerebrate do
       :cowboy_tcp_transport, [{:port, 8080}],
       :cowboy_http_protocol, [{:dispatch, dispatch}]
     )
-    Cerebrate.Supervisor.start_link()
+
+    {:ok, [[listen_port]]} = Erlang.init.get_argument(:port)
+    Cerebrate.Supervisor.start_link(Erlang.erlang.list_to_integer(listen_port))
   end
 
   def stop(_state) do
@@ -29,15 +31,19 @@ defmodule Cerebrate do
   defmodule Supervisor do
     @behavior :supervisor
 
-    def start_link() do
-      Erlang.supervisor.start_link {:local, :cerebrate_sup}, Cerebrate.Supervisor, []
+    def start_link(listen_port) do
+      Erlang.supervisor.start_link {:local, :cerebrate_sup}, Cerebrate.Supervisor, [listen_port]
     end
 
-    def init([]) do
+    def init([listen_port]) do
       {:ok, {{:one_for_one, 10, 10}, [
         {
           :cerebrate_server, {CerebrateCollector, :start_link, []},
           :permanent, 60, :worker, [:cerebrate]
+        },
+        {
+          :cerebrate_dnssd, {CerebrateDnssd, :start_link, [listen_port]},
+          :transient, 60, :worker, [:cerebrate]
         }
       ]}}
     end
