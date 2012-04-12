@@ -64,7 +64,18 @@ defmodule CerebrateWeb do
       output = Enum.map data, fn({metric, value}) ->  
         [metric, float_to_list(value)]
       end
-      Erlang.cowboy_http_req.reply(200, [], ["Data:", output], req)
+
+      Process.whereis(:cerebrate_dnssd) <- {:query, Process.self()}
+      peers = receive do
+      match: dnssd_state
+        Enum.map Erlang.dict.fetch(:peers, dnssd_state), fn({name, type, domain}) ->
+          [name, type, domain]
+        end
+      after: 2000
+        raise "Could not get peers"
+      end
+      IO.inspect peers
+      Erlang.cowboy_http_req.reply(200, [], ["Data:", output, peers], req)
     after: 5000
       Erlang.cowboy_http_req.reply(500, [], "Timed out", req)
     end

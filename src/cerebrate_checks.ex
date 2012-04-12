@@ -1,13 +1,53 @@
 defmodule CerebrateDnssd do
+  @service_type "_cerebrate._tcp"
+  @browse_timeout 1000
+
   def start_link(listen_port) do
-    Erlang.dnssd.register "Cerebrate-#{listen_port}", "_cerebrate._udp", listen_port
+    pid = spawn_link CerebrateDnssd, :start, [listen_port]
+    Process.register :cerebrate_dnssd, pid
+    {:ok, pid}
+  end
+
+  def start(listen_port) do
+    Erlang.dnssd.register "Cerebrate-#{listen_port}", CerebrateDnssd.__info__(:data)[:service_type], listen_port
     receive do
     match: {:dnssd, ref, {:register, :add, result}} 
       IO.puts "Registered #{inspect(result)}"
     match: {:dnssd, ref, {:register, :remove, result}}
       IO.puts "Unexpected remove result: #{inspect(result)}"
     end
-    {:ok, Process.self()}
+    run Erlang.dict.new()
+  end
+
+  def run(state) do
+    new_state = Erlang.dict.store :peers, get_peers(), state
+    #IO.inspect Erlang.dict.fetch :peers, new_state
+    receive do
+    match: {:query, caller}
+      caller <- new_state
+    after: 1000
+      #IO.puts "No calls after 1000ms"
+    end
+    run new_state
+  end
+
+
+  @doc """
+  Makes a dnssd browse request for all the services of type @service_type.
+  Returns [{ServiceName, ServiceType, Domain}]
+  """
+  defp get_peers() do
+    Erlang.dnssd.browse(CerebrateDnssd.__info__(:data)[:service_type])
+    get_peers([])
+  end
+
+  defp get_peers(current_peers) do
+    receive do
+    match: {:dnssd, ref, {:browse, :add, result}}
+      get_peers [result | current_peers]
+    after: CerebrateDnssd.__info__(:data)[:browse_timeout]
+      current_peers
+    end
   end
 end
 
@@ -24,12 +64,12 @@ defmodule CerebrateCollector do
 
   def run(state) do
     check_data = CerebrateChecks.all()
-    IO.inspect check_data
+    #IO.inspect check_data
     receive do
     match: {:query, caller}
       caller <- check_data
     after: 1000
-      IO.puts "No calls after 1000ms"
+      #IO.puts "No calls after 1000ms"
     end
     run state
   end
