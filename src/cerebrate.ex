@@ -77,14 +77,8 @@ defmodule CerebrateWeb do
       [metric, float_to_list(value)]
     end
 
-    Process.whereis(:cerebrate_dnssd) <- {:query, Process.self()}
-    peers = receive do
-    match: dnssd_state
-      Enum.map Erlang.dict.fetch(:peers, dnssd_state), fn({name, type, domain}) ->
-        [name, type, domain]
-      end
-    after: 2000
-      raise "Could not get peers"
+    peers = Enum.map CerebrateDnssd.get_peers(), fn({name, type, domain}) ->
+      [name, type, domain]
     end
     IO.inspect peers
     reply = ["Data:", output, peers]
