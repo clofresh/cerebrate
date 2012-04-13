@@ -25,6 +25,10 @@ defmodule :cerebrate do
       :cowboy_tcp_transport, [{:port, config[:web_port]}],
       :cowboy_http_protocol, [{:dispatch, dispatch}]
     )
+    Erlang.cowboy.start_listener(:cerebrate_rpc_listener, 100,
+      :cowboy_tcp_transport, [{:port, config[:rpc_port]}],
+      CerebrateRpcProtocol, []
+    )
 
     # Start the supervisor
     Cerebrate.Supervisor.start_link config

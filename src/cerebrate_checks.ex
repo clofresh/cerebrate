@@ -35,6 +35,26 @@ defmodule CerebrateDnssd do
   end
 end
 
+defmodule CerebrateRpcProtocol do
+  def start_link(listener_pid, socket, transport, opts) do
+    pid = spawn_link __MODULE__, :run, [listener_pid, socket, transport, opts]
+    {:ok, pid}
+  end
+
+  def run(listener_pid, socket, transport, opts) do
+    :ok = Erlang.cowboy.accept_ack(listener_pid)
+    timeout = 10000
+    case transport.recv(socket, 0, timeout) do
+    match: {:ok, data}
+      IO.puts "received data: #{data}"
+      transport.send socket, inspect(CerebrateChecks.all())
+    match: {:error, reason}
+      IO.puts "Error: #{inspect reason}"
+      transport.close(socket)
+    end
+  end
+end
+
 defmodule CerebrateRpc do
   use GenServer.Behavior
 
@@ -99,6 +119,7 @@ defmodule CerebrateChecks do
         #   21:18  up 2 days, 12:22, 3 users, load averages: 1.55 1.62 1.60
         [_, _, _, _, _, _, _, _, _, _, load1, load5, load15_with_cr] = Erlang.binary.split list_to_binary(Erlang.os.cmd('uptime')), [" "], [:global]
         load15 = Regex.replace %r/\n/, load15_with_cr, ""
+        #{load1, load5, load15} = {<<"1.0">>, <<"2.0">>, <<"3.0">>}
       end
       [{"system.load.1",  list_to_float(binary_to_list(load1))}, 
        {"system.load.5",  list_to_float(binary_to_list(load5))}, 
