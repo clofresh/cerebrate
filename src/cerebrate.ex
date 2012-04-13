@@ -15,18 +15,19 @@ defmodule :cerebrate do
       {:ok, [[val]]} = Erlang.init.get_argument key
       Erlang.erlang.list_to_integer val
     end
+    config = [rpc_port: rpc_port, web_port: web_port]
 
     # Set up the cowboy web server
     dispatch = [
-      {:'_', [{:'_', CerebrateWeb, []}]}
+      {:'_', [{:'_', CerebrateWeb, [config]}]}
     ] 
     Erlang.cowboy.start_listener(:cerebrate_http_listener, 100,
-      :cowboy_tcp_transport, [{:port, web_port}],
+      :cowboy_tcp_transport, [{:port, config[:web_port]}],
       :cowboy_http_protocol, [{:dispatch, dispatch}]
     )
 
     # Start the supervisor
-    Cerebrate.Supervisor.start_link rpc_port
+    Cerebrate.Supervisor.start_link config
   end
 
   def stop(_state) do
@@ -39,18 +40,18 @@ defmodule Cerebrate do
   defmodule Supervisor do
     @behavior :supervisor
 
-    def start_link(listen_port) do
-      Erlang.supervisor.start_link {:local, :cerebrate_sup}, Cerebrate.Supervisor, [listen_port]
+    def start_link(config) do
+      Erlang.supervisor.start_link {:local, :cerebrate_sup}, Cerebrate.Supervisor, [config]
     end
 
-    def init([listen_port]) do
+    def init([config]) do
       {:ok, {{:one_for_one, 10, 10}, [
         {
-          :cerebrate_server, {CerebrateCollector, :start_link, []},
+          :cerebrate_server, {CerebrateCollector, :start_link, [config]},
           :permanent, 60, :worker, [:cerebrate]
         },
         {
-          :cerebrate_dnssd, {CerebrateDnssd, :start_link, [listen_port]},
+          :cerebrate_dnssd, {CerebrateDnssd, :start_link, [config]},
           :transient, 60, :worker, [:cerebrate]
         }
       ]}}
@@ -61,7 +62,7 @@ end
 defmodule CerebrateWeb do
   @behavior :cowboy_http_handler
 
-  def init({_, :http}, req, []) do
+  def init({_, :http}, req, [_config]) do
     {:ok, req, :undefined}
   end
 

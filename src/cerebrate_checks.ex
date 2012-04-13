@@ -2,14 +2,15 @@ defmodule CerebrateDnssd do
   @service_type "_cerebrate._tcp"
   @browse_timeout 1000
 
-  def start_link(listen_port) do
-    pid = spawn_link CerebrateDnssd, :start, [listen_port]
+  def start_link(config) do
+    pid = spawn_link CerebrateDnssd, :start, [config]
     Process.register :cerebrate_dnssd, pid
     {:ok, pid}
   end
 
-  def start(listen_port) do
-    Erlang.dnssd.register "Cerebrate-#{listen_port}", CerebrateDnssd.__info__(:data)[:service_type], listen_port
+  def start(config) do
+    rpc_port = config[:rpc_port]
+    Erlang.dnssd.register "Cerebrate-#{rpc_port}", CerebrateDnssd.__info__(:data)[:service_type], rpc_port
     receive do
     match: {:dnssd, ref, {:register, :add, result}} 
       IO.puts "Registered #{inspect(result)}"
@@ -52,13 +53,13 @@ defmodule CerebrateDnssd do
 end
 
 defmodule CerebrateCollector do
-  def start_link() do
-    pid = spawn_link CerebrateCollector, :start, []
+  def start_link(config) do
+    pid = spawn_link CerebrateCollector, :start, [config]
     Process.register :collector, pid
     {:ok, pid}
   end
 
-  def start() do
+  def start(_config) do
     run Erlang.dict.store(:start_time, Erlang.now(), Erlang.dict.new())
   end
 
