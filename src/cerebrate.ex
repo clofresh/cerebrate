@@ -9,16 +9,24 @@ defmodule :cerebrate do
 
   def start(_type, _args) do
     IO.puts "Starting cerebrate"
+
+    # Get the ports from command line arguments
+    [rpc_port, web_port] = Enum.map [:rpc_port, :web_port], fn(key) ->
+      {:ok, [[val]]} = Erlang.init.get_argument key
+      Erlang.erlang.list_to_integer val
+    end
+
+    # Set up the cowboy web server
     dispatch = [
       {:'_', [{:'_', CerebrateWeb, []}]}
     ] 
     Erlang.cowboy.start_listener(:cerebrate_http_listener, 100,
-      :cowboy_tcp_transport, [{:port, 8080}],
+      :cowboy_tcp_transport, [{:port, web_port}],
       :cowboy_http_protocol, [{:dispatch, dispatch}]
     )
 
-    {:ok, [[listen_port]]} = Erlang.init.get_argument(:port)
-    Cerebrate.Supervisor.start_link(Erlang.erlang.list_to_integer(listen_port))
+    # Start the supervisor
+    Cerebrate.Supervisor.start_link rpc_port
   end
 
   def stop(_state) do

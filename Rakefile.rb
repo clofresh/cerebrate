@@ -11,7 +11,8 @@ task :build_deps do
 	end
 end
 
-task :run, :port do |task, args|
-	port = args.port || 3456
-	sh "./bin/cerebrate -port #{port}"
+task :run, :rpc_port, :web_port do |task, args|
+	rpc_port = args.rpc_port || 3456
+	web_port = args.web_port || 8080
+	sh "./bin/cerebrate -rpc_port #{rpc_port} -web_port #{web_port}"
 end
