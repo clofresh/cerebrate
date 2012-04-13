@@ -53,6 +53,10 @@ defmodule Cerebrate do
         {
           :cerebrate_dnssd, {CerebrateDnssd, :start_link, [config]},
           :transient, 60, :worker, [:cerebrate]
+        },
+        {
+          :cerebrate_rpc, {CerebrateRpc, :start_link, [config]},
+          :permanent, 60, :worker, [:cerebrate]
         }
       ]}}
     end
@@ -67,27 +71,26 @@ defmodule CerebrateWeb do
   end
 
   def handle(req, state) do
-    Process.whereis(:collector) <- {:query, Process.self()}
-    {:ok, req2} = receive do
-    match: data
-      output = Enum.map data, fn({metric, value}) ->  
-        [metric, float_to_list(value)]
-      end
+    data = CerebrateRpc.check_data
 
-      Process.whereis(:cerebrate_dnssd) <- {:query, Process.self()}
-      peers = receive do
-      match: dnssd_state
-        Enum.map Erlang.dict.fetch(:peers, dnssd_state), fn({name, type, domain}) ->
-          [name, type, domain]
-        end
-      after: 2000
-        raise "Could not get peers"
-      end
-      IO.inspect peers
-      Erlang.cowboy_http_req.reply(200, [], ["Data:", output, peers], req)
-    after: 5000
-      Erlang.cowboy_http_req.reply(500, [], "Timed out", req)
+    output = Enum.map data, fn({metric, value}) ->  
+      [metric, float_to_list(value)]
     end
+
+    Process.whereis(:cerebrate_dnssd) <- {:query, Process.self()}
+    peers = receive do
+    match: dnssd_state
+      Enum.map Erlang.dict.fetch(:peers, dnssd_state), fn({name, type, domain}) ->
+        [name, type, domain]
+      end
+    after: 2000
+      raise "Could not get peers"
+    end
+    IO.inspect peers
+    reply = ["Data:", output, peers]
+    IO.puts "replying with #{reply}"
+    {:ok, req2} = Erlang.cowboy_http_req.reply(200, [], reply, req)
+
     {:ok, req2, state}
   end
 

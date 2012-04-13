@@ -52,6 +52,37 @@ defmodule CerebrateDnssd do
   end
 end
 
+defmodule CerebrateRpc do
+  use GenServer.Behavior
+
+  def start_link(config) do
+    Erlang.gen_server.start_link({:local, :cerebrate_rpc}, __MODULE__, [config], [])
+  end
+
+  def init(_config) do
+    IO.puts "Initialize CerebrateRpc gen_server"
+    {:ok, []}
+  end
+
+  def handle_call(:check_data, _from, state) do
+    {:reply, state, state}
+  end
+
+  def handle_cast(:run_checks, state) do
+    {:noreply, CerebrateChecks.all()}
+  end
+
+  # API
+  def run_checks() do
+    Erlang.gen_server.cast(:cerebrate_rpc, :run_checks)
+  end
+
+  def check_data() do
+    Erlang.gen_server.call(:cerebrate_rpc, :check_data)
+  end
+
+end
+
 defmodule CerebrateCollector do
   def start_link(config) do
     pid = spawn_link CerebrateCollector, :start, [config]
@@ -60,19 +91,13 @@ defmodule CerebrateCollector do
   end
 
   def start(_config) do
-    run Erlang.dict.store(:start_time, Erlang.now(), Erlang.dict.new())
+    run
   end
 
-  def run(state) do
-    check_data = CerebrateChecks.all()
-    #IO.inspect check_data
-    receive do
-    match: {:query, caller}
-      caller <- check_data
-    after: 1000
-      #IO.puts "No calls after 1000ms"
-    end
-    run state
+  def run() do
+    CerebrateRpc.run_checks()
+    ok = Erlang.timer.sleep 2000
+    run
   end
 end
 
