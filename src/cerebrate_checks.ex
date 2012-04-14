@@ -20,19 +20,27 @@ defmodule CerebrateDnssd do
   """
   def get_peers() do
     Erlang.dnssd.browse(CerebrateDnssd.__info__(:data)[:service_type])
-    get_peers([])
+    get_peers []
   end
 
   defp get_peers(current_peers) do
     receive do
-    match: {:dnssd, ref, {:browse, :add, result}}
-      IO.puts "browse"
-      get_peers [result | current_peers]
+    match: {:dnssd, _ref, {:browse, :add, response={name, type, domain}}}
+      #IO.puts "browse response: #{response}"
+      Erlang.dnssd.resolve name, type, domain
+      get_peers current_peers
+    match: {:dnssd, _ref, {:resolve, response={domain_dot, port, data}}}
+      #IO.puts "resolve response: #{response}"
+      domain = binary_to_list(Regex.replace(%r/\.$/, domain_dot, ""))
+      IO.puts "Connecting to #{inspect(domain)} #{inspect(port)}"
+      {:ok, socket} = Erlang.gen_tcp.connect domain, port, [:binary, {:active, :false}]
+      get_peers [socket | current_peers]
     after: CerebrateDnssd.__info__(:data)[:browse_timeout]
       IO.puts "timeout"
       current_peers
     end
   end
+
 end
 
 defmodule CerebrateRpcProtocol do
@@ -84,6 +92,21 @@ defmodule CerebrateRpc do
     Erlang.gen_server.call(:cerebrate_rpc, :check_data)
   end
 
+  def check_data(socket) do
+    Erlang.gen_tcp.send socket, "check_data"
+    do_recv socket, []
+  end
+
+  defp do_recv(socket, data) do
+    IO.puts "receving data from #{inspect(socket)}"
+    case Erlang.gen_tcp.recv(socket, 0) do
+    match: {:ok, new_data}
+      do_recv socket, [new_data | data]
+    match: {:error, :closed}
+      IO.puts "finished receiving data from #{inspect(socket)}"
+      data
+    end
+  end
 end
 
 defmodule CerebrateCollector do
@@ -117,9 +140,9 @@ defmodule CerebrateChecks do
       match: {:error, :enoent} 
         # Now try OS X. Expecting something like:
         #   21:18  up 2 days, 12:22, 3 users, load averages: 1.55 1.62 1.60
-        [_, _, _, _, _, _, _, _, _, _, load1, load5, load15_with_cr] = Erlang.binary.split list_to_binary(Erlang.os.cmd('uptime')), [" "], [:global]
-        load15 = Regex.replace %r/\n/, load15_with_cr, ""
-        #{load1, load5, load15} = {<<"1.0">>, <<"2.0">>, <<"3.0">>}
+        #[_, _, _, _, _, _, _, _, _, _, load1, load5, load15_with_cr] = Erlang.binary.split list_to_binary(Erlang.os.cmd('uptime')), [" "], [:global]
+        #load15 = Regex.replace %r/\n/, load15_with_cr, ""
+        {load1, load5, load15} = {<<"1.0">>, <<"2.0">>, <<"3.0">>}
       end
       [{"system.load.1",  list_to_float(binary_to_list(load1))}, 
        {"system.load.5",  list_to_float(binary_to_list(load5))}, 

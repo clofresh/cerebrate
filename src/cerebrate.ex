@@ -81,9 +81,10 @@ defmodule CerebrateWeb do
       [metric, float_to_list(value)]
     end
 
-    peers = Enum.map CerebrateDnssd.get_peers(), fn({name, type, domain}) ->
-      [name, type, domain]
+    peers = Enum.map CerebrateDnssd.get_peers(), fn(socket) ->
+      CerebrateRpc.check_data socket
     end
+
     IO.inspect peers
     reply = ["Data:", output, peers]
     IO.puts "replying with #{reply}"
