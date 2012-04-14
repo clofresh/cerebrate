@@ -51,6 +51,14 @@ defmodule Cerebrate do
     def init([config]) do
       {:ok, {{:one_for_one, 10, 10}, [
         {
+          :cerebrate_checks, {CerebrateChecks, :start_link, [config]},
+          :permanent, 60, :worker, [:cerebrate]
+        },
+        {
+          :cerebrate_updater, {CerebrateUpdater, :start_link, [config]},
+          :permanent, 60, :worker, [:cerebrate]
+        },
+        {
           :cerebrate_rpc, {CerebrateRpc, :start_link, [config]},
           :permanent, 60, :worker, [:cerebrate]
         }

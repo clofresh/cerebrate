@@ -1,4 +1,31 @@
 defmodule CerebrateChecks do
+  use GenServer.Behavior
+
+  def start_link(config) do
+    Erlang.gen_server.start_link({:local, :cerebrate_checks}, __MODULE__, [config], [])
+  end
+
+  def init(_config) do
+    {:ok, []}
+  end
+
+  def handle_call(:data, _from, state) do
+    {:reply, state, state}
+  end
+
+  def handle_cast(:update, state) do
+    {:noreply, all()}
+  end
+
+  # API
+  def data() do
+    Erlang.gen_server.call(:cerebrate_checks, :data)
+  end
+
+  def update() do
+    Erlang.gen_server.cast(:cerebrate_checks, :update)
+  end
+
   def all() do
     loadavg()
   end
@@ -39,6 +66,24 @@ defmodule CerebrateChecks do
         error
       end
     end
+  end
+end
+
+
+defmodule CerebrateUpdater do
+  def start_link(config) do
+    pid = spawn_link CerebrateUpdater, :start, [config]
+    {:ok, pid}
+  end
+
+  def start(_config) do
+    run
+  end
+
+  def run() do
+    CerebrateChecks.update()
+    ok = Erlang.timer.sleep 2000
+    run
   end
 end
 

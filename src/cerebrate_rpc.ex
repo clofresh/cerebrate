@@ -69,7 +69,7 @@ defmodule CerebrateRpcProtocol do
     case transport.recv(socket, 0, timeout) do
     match: {:ok, data}
       IO.puts "received data: #{data}"
-      transport.send socket, inspect(CerebrateChecks.all())
+      transport.send socket, inspect(CerebrateChecks.data())
     match: {:error, reason}
       IO.puts "Error: #{inspect reason}"
       transport.close(socket)
