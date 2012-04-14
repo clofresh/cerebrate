@@ -1,10 +1,10 @@
-defmodule CerebrateDnssd do
+defmodule CerebrateRpc do
   @service_type "_cerebrate._tcp"
-  @browse_timeout 1000
+  @browse_timeout 50
 
   def start_link(config) do
     rpc_port = config[:rpc_port]
-    Erlang.dnssd.register "Cerebrate-#{rpc_port}", CerebrateDnssd.__info__(:data)[:service_type], rpc_port
+    Erlang.dnssd.register "Cerebrate-#{rpc_port}", __MODULE__.__info__(:data)[:service_type], rpc_port
     receive do
     match: {:dnssd, ref, {:register, :add, result}} 
       IO.puts "Registered #{inspect(result)}"
@@ -15,30 +15,44 @@ defmodule CerebrateDnssd do
   end
 
   @doc """
-  Makes a dnssd browse request for all the services of type @service_type.
-  Returns [{ServiceName, ServiceType, Domain}]
+  Makes a dnssd browse request for all the services of type @service_type,
+  then connect to them as send the given command.
   """
-  def get_peers() do
-    Erlang.dnssd.browse(CerebrateDnssd.__info__(:data)[:service_type])
-    get_peers []
+  def query_peers(command) do
+    Erlang.dnssd.browse(__MODULE__.__info__(:data)[:service_type])
+    query_peers command, []
   end
 
-  defp get_peers(current_peers) do
+  defp query_peers(command, data) do
     receive do
     match: {:dnssd, _ref, {:browse, :add, response={name, type, domain}}}
-      #IO.puts "browse response: #{response}"
+      # Found a peer, now get the port that it's listening on
       Erlang.dnssd.resolve name, type, domain
-      get_peers current_peers
-    match: {:dnssd, _ref, {:resolve, response={domain_dot, port, data}}}
-      #IO.puts "resolve response: #{response}"
+      query_peers command, data
+    match: {:dnssd, _ref, {:resolve, response={domain_dot, port, _dns_data}}}
+      # Resolved the port of a peer, now connect to it and send the query
       domain = binary_to_list(Regex.replace(%r/\.$/, domain_dot, ""))
       IO.puts "Connecting to #{inspect(domain)} #{inspect(port)}"
-      {:ok, socket} = Erlang.gen_tcp.connect domain, port, [:binary, {:active, :false}]
-      get_peers [socket | current_peers]
-    after: CerebrateDnssd.__info__(:data)[:browse_timeout]
-      IO.puts "timeout"
-      current_peers
+      {:ok, socket} = Erlang.gen_tcp.connect domain, port, [:binary, {:active, :true}]
+      Erlang.gen_tcp.send socket, command
+      query_peers command, data
+    match: {:tcp, _port, new_data}
+      # Received new data from a peer, append it to the list
+      query_peers command, [new_data | data]
+    match: {:tcp_closed, _port}
+      # A peer closed the socket, probably ok
+      query_peers command, data
+    after: __MODULE__.__info__(:data)[:browse_timeout]
+      # No messages after a few milliseconds, assume that everyone has 
+      # reported in and return the data. 
+      data
     end
+  end
+
+  # API
+
+  def check_data() do
+    query_peers "check_data"
   end
 
 end
@@ -62,70 +76,6 @@ defmodule CerebrateRpcProtocol do
     end
   end
 end
-
-defmodule CerebrateRpc do
-  use GenServer.Behavior
-
-  def start_link(config) do
-    Erlang.gen_server.start_link({:local, :cerebrate_rpc}, __MODULE__, [config], [])
-  end
-
-  def init(_config) do
-    IO.puts "Initialize CerebrateRpc gen_server"
-    {:ok, []}
-  end
-
-  def handle_call(:check_data, _from, state) do
-    {:reply, state, state}
-  end
-
-  def handle_cast(:run_checks, state) do
-    {:noreply, CerebrateChecks.all()}
-  end
-
-  # API
-  def run_checks() do
-    Erlang.gen_server.cast(:cerebrate_rpc, :run_checks)
-  end
-
-  def check_data() do
-    Erlang.gen_server.call(:cerebrate_rpc, :check_data)
-  end
-
-  def check_data(socket) do
-    Erlang.gen_tcp.send socket, "check_data"
-    do_recv socket, []
-  end
-
-  defp do_recv(socket, data) do
-    IO.puts "receving data from #{inspect(socket)}"
-    case Erlang.gen_tcp.recv(socket, 0) do
-    match: {:ok, new_data}
-      do_recv socket, [new_data | data]
-    match: {:error, :closed}
-      IO.puts "finished receiving data from #{inspect(socket)}"
-      data
-    end
-  end
-end
-
-defmodule CerebrateCollector do
-  def start_link(config) do
-    pid = spawn_link CerebrateCollector, :start, [config]
-    {:ok, pid}
-  end
-
-  def start(_config) do
-    run
-  end
-
-  def run() do
-    CerebrateRpc.run_checks()
-    ok = Erlang.timer.sleep 2000
-    run
-  end
-end
-
 
 defmodule CerebrateChecks do
   def all() do

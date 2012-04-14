@@ -51,14 +51,6 @@ defmodule Cerebrate do
     def init([config]) do
       {:ok, {{:one_for_one, 10, 10}, [
         {
-          :cerebrate_server, {CerebrateCollector, :start_link, [config]},
-          :permanent, 60, :worker, [:cerebrate]
-        },
-        {
-          :cerebrate_dnssd, {CerebrateDnssd, :start_link, [config]},
-          :transient, 60, :worker, [:cerebrate]
-        },
-        {
           :cerebrate_rpc, {CerebrateRpc, :start_link, [config]},
           :permanent, 60, :worker, [:cerebrate]
         }
@@ -76,17 +68,8 @@ defmodule CerebrateWeb do
 
   def handle(req, state) do
     data = CerebrateRpc.check_data
-
-    output = Enum.map data, fn({metric, value}) ->  
-      [metric, float_to_list(value)]
-    end
-
-    peers = Enum.map CerebrateDnssd.get_peers(), fn(socket) ->
-      CerebrateRpc.check_data socket
-    end
-
-    IO.inspect peers
-    reply = ["Data:", output, peers]
+    IO.inspect data
+    reply = ["Data:", data]
     IO.puts "replying with #{reply}"
     {:ok, req2} = Erlang.cowboy_http_req.reply(200, [], reply, req)
 
