@@ -11,9 +11,7 @@ defmodule CerebrateChecks do
       match: {:error, :enoent} 
         # Now try OS X. Expecting something like:
         #   21:18  up 2 days, 12:22, 3 users, load averages: 1.55 1.62 1.60
-        #[_, _, _, _, _, _, _, _, _, _, load1, load5, load15_with_cr] = Erlang.binary.split list_to_binary(Erlang.os.cmd('uptime')), [" "], [:global]
-        #load15 = Regex.replace %r/\n/, load15_with_cr, ""
-        {load1, load5, load15} = {<<"1.0">>, <<"2.0">>, <<"3.0">>}
+        [_, load1, load5, load15] = Regex.run %r/.*load averages: ([0-9.]*) ([0-9.]*) ([0-9.]*)/, list_to_binary(Erlang.os.cmd('uptime'))
       end
       [{"system.load.1",  list_to_float(binary_to_list(load1))}, 
        {"system.load.5",  list_to_float(binary_to_list(load5))}, 
