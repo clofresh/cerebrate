@@ -5,22 +5,27 @@ defmodule CerebrateChecks do
   end
 
   def start(_config) do
-    run Erlang.ets.new(:check_data, [:set, :public, :named_table])
+    ExLog.info "Starting Cerebrate checks"
+    run {
+      Port.open({:spawn, binary_to_list("python -u python/agent_port.py")}, [{:packet, 1}, :binary, :use_stdio]),
+      Erlang.ets.new(:check_data, [:set, :public, :named_table])
+    }
   end
 
-  def run(table) do
-    update table
+  def run(state={port, table}) do
+    agent_data = case check_agent(port) do
+    match: {:error, reason}
+      ExLog.error "CerebrateChecks exiting: #{inspect(reason)}"
+    match: data
+      data
+    end
+    Erlang.ets.insert table, update_ets(agent_data, [])
     ok = Erlang.timer.sleep 2000
-    run table
+    run state
   end
 
-  def update(table) do
-    Erlang.ets.insert table, update_ets(check_agent, [])
-  end
-
-  def check_agent() do
-    port = Port.open({:spawn, binary_to_list("python -u python/agent_port.py")}, [{:packet, 1}, :binary, :use_stdio])
-    Port.command(port, term_to_binary({:check}))
+  def check_agent(port) do
+    :true = Port.command(port, term_to_binary({:check}))
     receive do
     match: {port, {:data, data}}
       binary_to_term(data)
