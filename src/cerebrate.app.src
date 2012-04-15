@@ -1,7 +1,14 @@
-{application, cerebrate, [
+{application, '__MAIN__.Cerebrate', [
 	{description, "Decentralized monitoring agent"},
 	{vsn, "0.1.0"},
-	{modules, []},
+	{modules, [
+		'Cerebrate', 
+		'CerebrateChecks',
+		'CerebrateRpc',
+		'CerebrateSupervisor',
+		'CerebrateWeb',
+		'ExLog'
+	]},
 	{registered, []},
 	{applications, [
 		kernel,
@@ -9,6 +16,6 @@
 		dnssd,
 		cowboy
 	]},
-	{mod, {cerebrate, []}},
+	{mod, {'__MAIN__.Cerebrate', []}},
 	{env, []}
 ]}.

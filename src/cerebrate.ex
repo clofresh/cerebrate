@@ -1,21 +1,16 @@
-defmodule :cerebrate do
+defmodule Cerebrate do
   @behavior :application
 
   def start() do
     Erlang.application.start :dnssd
     Erlang.application.start :cowboy
-    Erlang.application.start :cerebrate
+    Erlang.application.start __MODULE__
   end
 
   def start(_type, _args) do
-    ExLog.info "Starting cerebrate"
-
-    # Get the ports from command line arguments
-    [rpc_port, web_port] = Enum.map [:rpc_port, :web_port], fn(key) ->
-      {:ok, [[val]]} = Erlang.init.get_argument key
-      Erlang.erlang.list_to_integer val
-    end
-    config = [rpc_port: rpc_port, web_port: web_port, log_level: :info]
+    # Parse the from command line arguments
+    config = parse_args()
+    IO.puts "Starting cerebrate with args: #{inspect(config)}"
 
     # Set up the cowboy web server
     dispatch = [
@@ -32,6 +27,24 @@ defmodule :cerebrate do
 
     # Start the supervisor
     CerebrateSupervisor.start_link config
+  end
+
+  defp parse_args() do
+    default_args = [rpc_port: 3456, web_port: 8080, log_level: :info]
+    {raw_config, _other_args} = OptionParser.Simple.parse System.argv
+    config = Enum.map default_args, fn({key, default_val}) ->
+      val2 = case {key, raw_config[key]} do
+      match: {key, nil}
+        default_val
+      match: {:rpc_port, val}
+        Erlang.erlang.list_to_integer(binary_to_list(val))
+      match: {:web_port, val}
+        Erlang.erlang.list_to_integer(binary_to_list(val))
+      match: {key, val}
+        val
+      end
+      {key, val2}
+    end
   end
 
   def stop(_state) do
@@ -51,15 +64,15 @@ defmodule CerebrateSupervisor do
     {:ok, {{:one_for_one, 10, 10}, [
       {
         :exlog, {ExLog, :start_link, [config]},
-        :permanent, 60, :worker, [:cerebrate]
+        :permanent, 60, :worker, [ExLog]
       },
       {
         :cerebrate_checks, {CerebrateChecks, :start_link, [config]},
-        :permanent, 60, :worker, [:cerebrate]
+        :permanent, 60, :worker, [CerebrateChecks]
       },
       {
         :cerebrate_rpc, {CerebrateRpc, :start_link, [config]},
-        :permanent, 60, :worker, [:cerebrate]
+        :permanent, 60, :worker, [CerebrateRpc]
       }
     ]}}
   end
