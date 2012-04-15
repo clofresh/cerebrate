@@ -1,6 +1,10 @@
-task :default => [:build]
+task :default => [:clean, :build_deps, :build]
 
-task :build => [:build_deps] do 
+task :clean do
+	sh "rm -rf ebin/*"
+end
+
+task :build do 
 	sh "./deps/elixir/bin/elixirc -o ebin/ src/*.ex"
 end
 
