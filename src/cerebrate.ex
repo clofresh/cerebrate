@@ -31,7 +31,7 @@ defmodule :cerebrate do
     )
 
     # Start the supervisor
-    Cerebrate.Supervisor.start_link config
+    CerebrateSupervisor.start_link config
   end
 
   def stop(_state) do
@@ -40,30 +40,28 @@ defmodule :cerebrate do
 end
 
 
-defmodule Cerebrate do
-  defmodule Supervisor do
-    @behavior :supervisor
+defmodule CerebrateSupervisor do
+  @behavior :supervisor
 
-    def start_link(config) do
-      Erlang.supervisor.start_link {:local, :cerebrate_sup}, Cerebrate.Supervisor, [config]
-    end
+  def start_link(config) do
+    Erlang.supervisor.start_link {:local, :cerebrate_sup}, __MODULE__, [config]
+  end
 
-    def init([config]) do
-      {:ok, {{:one_for_one, 10, 10}, [
-        {
-          :exlog, {ExLog, :start_link, [config]},
-          :permanent, 60, :worker, [:cerebrate]
-        },
-        {
-          :cerebrate_checks, {CerebrateChecks, :start_link, [config]},
-          :permanent, 60, :worker, [:cerebrate]
-        },
-        {
-          :cerebrate_rpc, {CerebrateRpc, :start_link, [config]},
-          :permanent, 60, :worker, [:cerebrate]
-        }
-      ]}}
-    end
+  def init([config]) do
+    {:ok, {{:one_for_one, 10, 10}, [
+      {
+        :exlog, {ExLog, :start_link, [config]},
+        :permanent, 60, :worker, [:cerebrate]
+      },
+      {
+        :cerebrate_checks, {CerebrateChecks, :start_link, [config]},
+        :permanent, 60, :worker, [:cerebrate]
+      },
+      {
+        :cerebrate_rpc, {CerebrateRpc, :start_link, [config]},
+        :permanent, 60, :worker, [:cerebrate]
+      }
+    ]}}
   end
 end
 
