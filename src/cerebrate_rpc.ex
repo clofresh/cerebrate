@@ -7,9 +7,9 @@ defmodule CerebrateRpc do
     Erlang.dnssd.register "Cerebrate-#{rpc_port}", __MODULE__.__info__(:data)[:service_type], rpc_port
     receive do
     match: {:dnssd, ref, {:register, :add, result}} 
-      IO.puts "Registered #{inspect(result)}"
+      ExLog.info "Registered #{inspect(result)}"
     match: {:dnssd, ref, {:register, :remove, result}}
-      IO.puts "Unexpected remove result: #{inspect(result)}"
+      ExLog.info "Unexpected remove result: #{inspect(result)}"
     end
     {:ok, Process.self()}
   end
@@ -19,7 +19,7 @@ defmodule CerebrateRpc do
   then connect to them as send the given command.
   """
   def query_peers(command) do
-    IO.puts "querying peers for #{command}"
+    ExLog.info "querying peers for #{command}"
     Erlang.dnssd.browse(__MODULE__.__info__(:data)[:service_type])
     query_peers command, [], Erlang.sets.new()
   end
@@ -36,17 +36,17 @@ defmodule CerebrateRpc do
       conn = {domain, port}
       case Erlang.sets.is_element(conn, seen_already) do
       match: :true
-        IO.puts "Skipping #{inspect(conn)}"
+        ExLog.info "Skipping #{inspect(conn)}"
         query_peers command, data, seen_already
       match: :false
-        IO.puts "Connecting to #{inspect(conn)}"
+        ExLog.info "Connecting to #{inspect(conn)}"
         {:ok, socket} = Erlang.gen_tcp.connect domain, port, [:binary, {:active, :true}]        
         Erlang.gen_tcp.send socket, command
         query_peers command, data, Erlang.sets.add_element({domain, port}, seen_already)
       end
     match: {:tcp, _port, new_data}
       # Received new data from a peer, append it to the list
-      IO.puts "received new data: #{inspect(new_data)}"
+      ExLog.info "received new data: #{inspect(new_data)}"
       query_peers command, [new_data | data], seen_already
     match: {:tcp_closed, _port}
       # A peer closed the socket, probably ok
@@ -78,15 +78,15 @@ defmodule CerebrateRpcProtocol do
     case transport.recv(socket, 0, timeout) do
     match: {:ok, data}
       response = inspect(CerebrateChecks.get_all())
-      IO.puts "received data: #{data}, responding with #{inspect(response)}"
+      ExLog.info "received data: #{data}, responding with #{inspect(response)}"
       case transport.send(socket, response) do
       match: :ok
         :ok
       match: {:error, reason}
-        IO.puts "Send error: #{inspect(reason)}"
+        ExLog.info "Send error: #{inspect(reason)}"
       end
     match: {:error, reason}
-      IO.puts "Error: #{inspect reason}"
+      ExLog.info "Error: #{inspect reason}"
       transport.close(socket)
     end
   end

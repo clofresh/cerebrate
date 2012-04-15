@@ -25,12 +25,13 @@ defmodule CerebrateChecks do
     match: {port, {:data, data}}
       binary_to_term(data)
     after: 5000
-      IO.puts "Agent check timed out"
+      ExLog.error "Agent check timed out"
       {:error, :timeout}
     end
   end
 
   def update_ets([], processed_data) do
+    ExLog.info "New check data: #{inspect(processed_data)}"
     processed_data
   end
 

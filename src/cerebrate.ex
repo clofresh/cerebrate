@@ -8,14 +8,14 @@ defmodule :cerebrate do
   end
 
   def start(_type, _args) do
-    IO.puts "Starting cerebrate"
+    ExLog.info "Starting cerebrate"
 
     # Get the ports from command line arguments
     [rpc_port, web_port] = Enum.map [:rpc_port, :web_port], fn(key) ->
       {:ok, [[val]]} = Erlang.init.get_argument key
       Erlang.erlang.list_to_integer val
     end
-    config = [rpc_port: rpc_port, web_port: web_port]
+    config = [rpc_port: rpc_port, web_port: web_port, log_level: :info]
 
     # Set up the cowboy web server
     dispatch = [
@@ -51,6 +51,10 @@ defmodule Cerebrate do
     def init([config]) do
       {:ok, {{:one_for_one, 10, 10}, [
         {
+          :exlog, {ExLog, :start_link, [config]},
+          :permanent, 60, :worker, [:cerebrate]
+        },
+        {
           :cerebrate_checks, {CerebrateChecks, :start_link, [config]},
           :permanent, 60, :worker, [:cerebrate]
         },
@@ -74,7 +78,7 @@ defmodule CerebrateWeb do
     data = CerebrateRpc.check_data
     IO.inspect data
     reply = ["Data:", data]
-    IO.puts "replying with #{reply}"
+    ExLog.info "replying with #{reply}"
     {:ok, req2} = Erlang.cowboy_http_req.reply(200, [], reply, req)
 
     {:ok, req2, state}
