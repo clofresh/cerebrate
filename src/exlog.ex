@@ -56,7 +56,7 @@ defmodule ExLog do
 	def handle_cast({level, {from, message}}, config) do
 		case should_log?(level, config) do
 		match: :true
-			IO.puts "#{date} - #{inspect(from)} - #{atom_to_binary(level)} - #{message}"
+			IO.puts "\r#{date} - #{inspect(from)} - #{atom_to_binary(level)} - #{message}"
 			{:noreply, config}			
 		else:
 			{:noreply, config}			
