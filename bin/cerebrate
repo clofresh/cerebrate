@@ -5,6 +5,7 @@ iex -pa $CEREBRATE_HOME/ebin/ \
     -pa $CEREBRATE_HOME/deps/proper/ebin/ \
     -pa $CEREBRATE_HOME/deps/cowboy/ebin/ \
     -pa $CEREBRATE_HOME/deps/dnssd/ebin/ \
+    -pa $CEREBRATE_HOME/deps/erlydtl/ebin/ \
     -pa $CEREBRATE_HOME/deps/elixir/ebin/ \
     -pa $CEREBRATE_HOME/deps/elixir/exbin/ \
     -e "Cerebrate.start()" --no-halt \

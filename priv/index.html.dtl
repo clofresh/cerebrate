@@ -1,0 +1,20 @@
+<html>
+<head><title>Cerebrate</title></head>
+<body>
+
+{% for host, port, metrics in data %}
+<h2>{{host}}:{{port}}</h2>
+<table>
+{% for metric, value in metrics %}
+<tr>
+	<td>{{metric}}</td>
+	<td>{{value}}</td>
+</tr>
+{% endfor %}
+</table>
+{% empty %}
+No data
+{% endfor %}
+
+</body>
+</html>

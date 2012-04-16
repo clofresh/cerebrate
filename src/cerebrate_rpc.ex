@@ -47,9 +47,11 @@ defmodule CerebrateRpc do
     match: {:tcp, socket, new_data}
       # Received new data from a peer, append it to the list
       {domain, port} = Erlang.dict.fetch(socket, conn_lookup)
-      conn = [list_to_binary(domain), list_to_binary(integer_to_list(port))]
-      ExLog.info "received new data: #{inspect(new_data)} from #{inspect(conn)}"
-      query_peers command, [[conn, new_data] | data], seen_already, conn_lookup
+      query_peers command, [
+        {list_to_binary(domain), 
+         list_to_binary(integer_to_list(port)), 
+         binary_to_term(new_data)} | data
+      ], seen_already, conn_lookup
     match: {:tcp_closed, _port}
       # A peer closed the socket, probably ok
       query_peers command, data, seen_already, conn_lookup
@@ -63,7 +65,9 @@ defmodule CerebrateRpc do
   # API
 
   def check_data() do
-    query_peers "check_data"
+    data = query_peers "check_data"
+    ExLog.info "check_data: #{inspect(data)}"
+    data
   end
 
 end
@@ -89,8 +93,9 @@ defmodule CerebrateRpcProtocol do
   # Request handling logic
 
   def handle_request(request="check_data", socket, transport) do
-    response = inspect({CerebrateChecks.get_all()})
-    ExLog.info "received data: #{request}, responding with #{response}"
+    data = CerebrateChecks.get_all()
+    response = term_to_binary data
+    ExLog.info "received data: #{request}, responding with #{inspect(data)}"
     case transport.send(socket, response) do
     match: :ok
       :ok
