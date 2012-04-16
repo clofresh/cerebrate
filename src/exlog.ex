@@ -2,7 +2,7 @@ defmodule ExLog do
 	use GenServer.Behavior
 
 	def start_link(config) do
-		Erlang.gen_server.start_link {:local, :exlog}, __MODULE__, config, []
+		:gen_server.start_link {:local, :exlog}, __MODULE__, config, []
 	end
 
 	def init(args) do
@@ -49,7 +49,7 @@ defmodule ExLog do
 
 	def date() do
 		{{year, month, day}, 
-		 {hour, minute, second}} = Erlang.calendar.now_to_universal_time(:erlang.now())
+		 {hour, minute, second}} = :calendar.now_to_universal_time(:erlang.now())
 		"#{year}-#{month}-#{day} #{hour}:#{minute}:#{second}"
 	end
 
@@ -64,19 +64,19 @@ defmodule ExLog do
 	end
 
 	def debug(message) do
-		Erlang.gen_server.cast :exlog, {:debug, {Process.self(), message}}
+		:gen_server.cast :exlog, {:debug, {Process.self(), message}}
 	end
 
 	def info(message) do
-		Erlang.gen_server.cast :exlog, {:info, {Process.self(), message}}
+		:gen_server.cast :exlog, {:info, {Process.self(), message}}
 	end
 	
 	def warn(message) do
-		Erlang.gen_server.cast :exlog, {:warn, {Process.self(), message}}
+		:gen_server.cast :exlog, {:warn, {Process.self(), message}}
 	end
 	
 	def error(message) do
-		Erlang.gen_server.cast :exlog, {:error, {Process.self(), message}}
+		:gen_server.cast :exlog, {:error, {Process.self(), message}}
 	end
 
 end

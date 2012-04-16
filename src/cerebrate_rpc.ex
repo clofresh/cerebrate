@@ -4,7 +4,7 @@ defmodule CerebrateRpc do
 
   def start_link(config) do
     rpc_port = config[:rpc_port]
-    Erlang.dnssd.register "Cerebrate-#{rpc_port}", __MODULE__.__info__(:data)[:service_type], rpc_port
+    :dnssd.register "Cerebrate-#{rpc_port}", __MODULE__.__info__(:data)[:service_type], rpc_port
     receive do
     match: {:dnssd, ref, {:register, :add, result}} 
       ExLog.info "Registered #{inspect(result)}"
@@ -20,33 +20,33 @@ defmodule CerebrateRpc do
   """
   def query_peers(command) do
     ExLog.info "querying peers for #{command}"
-    Erlang.dnssd.browse(__MODULE__.__info__(:data)[:service_type])
-    query_peers command, [], Erlang.sets.new(), Erlang.dict.new()
+    :dnssd.browse(__MODULE__.__info__(:data)[:service_type])
+    query_peers command, [], :sets.new(), :dict.new()
   end
 
   defp query_peers(command, data, seen_already, conn_lookup) do
     receive do
     match: {:dnssd, _ref, {:browse, :add, response={name, type, domain}}}
       # Found a peer, now get the port that it's listening on
-      Erlang.dnssd.resolve name, type, domain
+      :dnssd.resolve name, type, domain
       query_peers command, data, seen_already, conn_lookup
     match: {:dnssd, _ref, {:resolve, response={domain_dot, port, _dns_data}}}
       # Resolved the port of a peer, now connect to it and send the query
       domain = binary_to_list(Regex.replace(%r/\.$/, domain_dot, ""))
       conn = {domain, port}
-      case Erlang.sets.is_element(conn, seen_already) do
+      case :sets.is_element(conn, seen_already) do
       match: :true
         ExLog.info "Skipping #{inspect(conn)}"
         query_peers command, data, seen_already, conn_lookup
       match: :false
         ExLog.info "Connecting to #{inspect(conn)}"
-        {:ok, socket} = Erlang.gen_tcp.connect domain, port, [:binary, {:active, :true}]      
-        Erlang.gen_tcp.send socket, command
-        query_peers command, data, Erlang.sets.add_element(conn, seen_already), Erlang.dict.store(socket, conn, conn_lookup)
+        {:ok, socket} = :gen_tcp.connect domain, port, [:binary, {:active, :true}]      
+        :gen_tcp.send socket, command
+        query_peers command, data, :sets.add_element(conn, seen_already), :dict.store(socket, conn, conn_lookup)
       end
     match: {:tcp, socket, new_data}
       # Received new data from a peer, append it to the list
-      {domain, port} = Erlang.dict.fetch(socket, conn_lookup)
+      {domain, port} = :dict.fetch(socket, conn_lookup)
       query_peers command, [
         {list_to_binary(domain), 
          list_to_binary(integer_to_list(port)), 
@@ -79,7 +79,7 @@ defmodule CerebrateRpcProtocol do
   end
 
   def run(listener_pid, socket, transport, opts) do
-    :ok = Erlang.cowboy.accept_ack(listener_pid)
+    :ok = :cowboy.accept_ack(listener_pid)
     timeout = 10000
     case transport.recv(socket, 0, timeout) do
     match: {:ok, data}

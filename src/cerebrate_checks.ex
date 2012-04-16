@@ -8,7 +8,7 @@ defmodule CerebrateChecks do
     ExLog.info "Starting Cerebrate checks"
     run {
       Port.open({:spawn, binary_to_list("python -u python/agent_port.py")}, [{:packet, 1}, :binary, :use_stdio]),
-      Erlang.ets.new(:check_data, [:set, :public, :named_table])
+      :ets.new(:check_data, [:set, :public, :named_table])
     }
   end
 
@@ -19,8 +19,8 @@ defmodule CerebrateChecks do
     match: data
       data
     end
-    Erlang.ets.insert table, update_ets(agent_data, [])
-    ok = Erlang.timer.sleep 2000
+    :ets.insert table, update_ets(agent_data, [])
+    ok = :timer.sleep 2000
     run state
   end
 
@@ -45,7 +45,7 @@ defmodule CerebrateChecks do
   end
 
   def get_all() do
-    Erlang.ets.tab2list :check_data
+    :ets.tab2list :check_data
   end
 
 end
